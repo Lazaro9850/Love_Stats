@@ -61,6 +61,26 @@ Map<String, int> contarBomDia(List<Mensagem> mensagens) {
   return contagem;
 }
 
+Map<String, Map<String, int>> contarSaudacoesDetalhado(List<Mensagem> mensagens) {
+  Map<String, Map<String, int>> contagem = {};
+  RegExp dia = RegExp(r'\bbo+m+ di+a+\b|\bbo+m+di+a+\b', caseSensitive: false);
+  RegExp tarde = RegExp(r'\bbo+a+ ta+r+de+\b', caseSensitive: false);
+  RegExp noite = RegExp(r'\bbo+a+ no+i+te+\b|\bbo+a+no+i+te+\b', caseSensitive: false);
+
+  for (var msg in mensagens) {
+    String? tipo;
+    if (dia.hasMatch(msg.texto)) tipo = 'dia';
+    else if (tarde.hasMatch(msg.texto)) tipo = 'tarde';
+    else if (noite.hasMatch(msg.texto)) tipo = 'noite';
+
+    if (tipo != null) {
+      contagem.putIfAbsent(msg.usuario, () => {'dia': 0, 'tarde': 0, 'noite': 0});
+      contagem[msg.usuario]![tipo] = contagem[msg.usuario]![tipo]! + 1;
+    }
+  }
+  return contagem;
+}
+
 //\bdescu+l+pa+\b|\bme+ de+scu+lpa+\b|\bme+ pe+rdo+a+\b|\bperda+o+\b|\bperdã+o+\b|\bfoi mal\b|\beu erre+i+\b
 
 Map<String, int> contarDesculpas(List<Mensagem> mensagens) {
