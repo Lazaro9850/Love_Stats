@@ -2,7 +2,6 @@ import 'conversa.dart';
 
 Map<String, int> contarMensagensPorUsuario(List<Mensagem> mensagens) {
   Map<String, int> contagem = {};
-  //contagem.containsKey(usuario)
   for (var msg in mensagens) {
     if (contagem.containsKey(msg.usuario)) {
       contagem[msg.usuario] = contagem[msg.usuario]! + 1;
@@ -14,7 +13,6 @@ Map<String, int> contarMensagensPorUsuario(List<Mensagem> mensagens) {
   }
 
 Map<String, int> euTeAmoPorUsuario(List<Mensagem> mensagens) {
-  //  RegExp padrao = RegExp(r"(\d{2}/\d{2}/\d{4} \d{2}:\d{2}) - (.*?): (.*)");
   RegExp padrao = RegExp(r"\be+u+ te+ a+mo+\b|\bte+ a+mo+\b|\ba+mo+ mu+i+to+ vc+\b|\ba+mo+ mu+i+to+ vo+ce+\b|\bte+ a+mo+ mu+i+to+\b|\ba+mo+ mu+i+to+ vc+\b|\be+u+ te+ a+mo+ tmb+\b|\be+u+ tmb te+ a+mo+\b|\be+u+ ta+mbe+m+ te+ a+mo+\b|\be+u+ te+ a+mo+ ta+m+be+m+\b|\btb+m+ te a+mo+\b|\beu te a+mo+ tb+m+\b",
   caseSensitive: false);
   Map<String, int> contagem = {};
@@ -80,8 +78,6 @@ Map<String, Map<String, int>> contarSaudacoesDetalhado(List<Mensagem> mensagens)
   }
   return contagem;
 }
-
-//\bdescu+l+pa+\b|\bme+ de+scu+lpa+\b|\bme+ pe+rdo+a+\b|\bperda+o+\b|\bperdã+o+\b|\bfoi mal\b|\beu erre+i+\b
 
 Map<String, int> contarDesculpas(List<Mensagem> mensagens) {
   Map<String, int> contagem = {};

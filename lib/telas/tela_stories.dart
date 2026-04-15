@@ -1,7 +1,12 @@
+import 'dart:io';
 import 'package:flutter/material.dart';
 import 'package:google_fonts/google_fonts.dart';
 import 'package:love_stats_app/conversa.dart';
 import 'package:love_stats_app/analises.dart';
+import 'package:fl_chart/fl_chart.dart';
+import 'package:screenshot/screenshot.dart';
+import 'package:share_plus/share_plus.dart';
+import 'package:path_provider/path_provider.dart';
 
 class TelaStories extends StatefulWidget {
   final Conversa conversa;
@@ -16,6 +21,7 @@ class _TelaStoriesState extends State<TelaStories> {
   int _indiceAtual = 0;
   late List<Widget> _slides;
   final PageController _pageController = PageController();
+  final ScreenshotController _screenshotController = ScreenshotController();
 
   @override
   void initState() {
@@ -51,32 +57,34 @@ class _TelaStoriesState extends State<TelaStories> {
     return Scaffold(
       body: Stack(
         children: [
-          // Slides
-          GestureDetector(
-            onTapDown: (details) {
-              final screenWidth = MediaQuery.of(context).size.width;
-              if (details.globalPosition.dx < screenWidth / 3) {
-                // Toque na esquerda: volta
-                if (_indiceAtual > 0) {
-                  _pageController.previousPage(duration: const Duration(milliseconds: 300), curve: Curves.easeInOut);
-                }
-              } else {
-                // Toque na direita: avança
-                if (_indiceAtual < _slides.length - 1) {
-                  _pageController.nextPage(duration: const Duration(milliseconds: 300), curve: Curves.easeInOut);
+          // Slides envoltos pelo ScreenshotController
+          Screenshot(
+            controller: _screenshotController,
+            child: GestureDetector(
+              onTapDown: (details) {
+                final screenWidth = MediaQuery.of(context).size.width;
+                if (details.globalPosition.dx < screenWidth / 3) {
+                  if (_indiceAtual > 0) {
+                    _pageController.previousPage(duration: const Duration(milliseconds: 300), curve: Curves.easeInOut);
+                  }
                 } else {
-                  Navigator.pop(context);
+                  if (_indiceAtual < _slides.length - 1) {
+                    _pageController.nextPage(duration: const Duration(milliseconds: 300), curve: Curves.easeInOut);
+                  } else {
+                    Navigator.pop(context);
+                  }
                 }
-              }
-            },
-            child: PageView(
-              controller: _pageController,
-              onPageChanged: (index) {
-                setState(() {
-                  _indiceAtual = index;
-                });
               },
-              children: _slides,
+              child: PageView(
+                controller: _pageController,
+                physics: const NeverScrollableScrollPhysics(),
+                onPageChanged: (index) {
+                  setState(() {
+                    _indiceAtual = index;
+                  });
+                },
+                children: _slides,
+              ),
             ),
           ),
 
@@ -110,9 +118,41 @@ class _TelaStoriesState extends State<TelaStories> {
               onPressed: () => Navigator.pop(context),
             ),
           ),
+          
+          // Botão Compartilhar (sempre visível no story)
+          Positioned(
+            bottom: 40,
+            left: 0,
+            right: 0,
+            child: Center(
+              child: ElevatedButton.icon(
+                onPressed: _compartilharSlide,
+                icon: const Icon(Icons.share, size: 20),
+                label: const Text('Compartilhar este Story'),
+                style: ElevatedButton.styleFrom(
+                  backgroundColor: Colors.white.withOpacity(0.2),
+                  foregroundColor: Colors.white,
+                  elevation: 0,
+                  padding: const EdgeInsets.symmetric(horizontal: 24, vertical: 12),
+                  shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(30), side: const BorderSide(color: Colors.white)),
+                ),
+              ),
+            ),
+          ),
         ],
       ),
     );
+  }
+
+  Future<void> _compartilharSlide() async {
+    final image = await _screenshotController.capture();
+    if (image != null) {
+      final directory = await getApplicationDocumentsDirectory();
+      final imagePath = await File('${directory.path}/love_stats_story.png').create();
+      await imagePath.writeAsBytes(image);
+      
+      await Share.shareXFiles([XFile(imagePath.path)], text: 'Olha os dados da nossa conversa no LoveStats! ❤️');
+    }
   }
 
   Widget _buildSlideCapa() {
@@ -128,6 +168,7 @@ class _TelaStoriesState extends State<TelaStories> {
         child: Column(
           mainAxisAlignment: MainAxisAlignment.center,
           children: [
+            const SizedBox(height: 80), // Espaço para não sobrepor a barra
             const Icon(Icons.favorite, color: Colors.white, size: 100),
             const SizedBox(height: 20),
             Text(
@@ -139,7 +180,7 @@ class _TelaStoriesState extends State<TelaStories> {
               ),
             ),
             Text(
-              'em dados ❤️',
+              'em cada detalhe ❤️',
               style: GoogleFonts.poppins(color: Colors.white70, fontSize: 20),
             ),
           ],
@@ -153,14 +194,7 @@ class _TelaStoriesState extends State<TelaStories> {
     
     final keys = dados.keys.toList();
     final vencedor = keys[0];
-    final maxVal = dados[vencedor] ?? 0;
-    
-    String outroUser = "";
-    int outroVal = 0;
-    if (keys.length > 1) {
-      outroUser = keys[1];
-      outroVal = dados[outroUser] ?? 0;
-    }
+    final total = dados.values.fold(0, (sum, i) => sum + i);
 
     return Container(
       padding: const EdgeInsets.all(40),
@@ -172,82 +206,63 @@ class _TelaStoriesState extends State<TelaStories> {
         ),
       ),
       child: Column(
-        mainAxisAlignment: MainAxisAlignment.center,
         children: [
+          const SizedBox(height: 60), // Espaço para não sobrepor a barra
           Text(
             titulo,
             textAlign: TextAlign.center,
-            style: GoogleFonts.poppins(color: Colors.white, fontSize: 24, fontWeight: FontWeight.bold),
+            style: GoogleFonts.poppins(color: Colors.white, fontSize: 28, fontWeight: FontWeight.bold),
           ),
           const SizedBox(height: 40),
-          // Winner Card
-          _buildUserScoreCard(vencedor, maxVal, true),
-          const SizedBox(height: 20),
-          if (outroUser.isNotEmpty) ...[
-            Text('vs', style: GoogleFonts.poppins(color: Colors.white70, fontSize: 18, fontStyle: FontStyle.italic)),
-            const SizedBox(height: 20),
-            _buildUserScoreCard(outroUser, outroVal, false),
-          ],
+          // Mini Gráfico no Story
+          SizedBox(
+            height: 180,
+            child: PieChart(
+              PieChartData(
+                sections: List.generate(keys.length, (index) {
+                  final val = dados[keys[index]]!.toDouble();
+                  return PieChartSectionData(
+                    value: val,
+                    title: '${(val/total*100).toStringAsFixed(0)}%',
+                    color: index == 0 ? Colors.white : Colors.white.withOpacity(0.4),
+                    radius: 50,
+                    titleStyle: const TextStyle(color: Colors.black, fontWeight: FontWeight.bold, fontSize: 12),
+                  );
+                }),
+                sectionsSpace: 2,
+              ),
+            ),
+          ),
+          const SizedBox(height: 40),
+          _buildRankingStory(keys, dados),
           const Spacer(),
           Text(
             '$vencedor ganhou essa!',
             textAlign: TextAlign.center,
-            style: GoogleFonts.poppins(color: Colors.white, fontSize: 22, fontWeight: FontWeight.w900),
+            style: GoogleFonts.poppins(color: Colors.white, fontSize: 24, fontWeight: FontWeight.w900),
           ),
-          const SizedBox(height: 30),
-          ElevatedButton.icon(
-            onPressed: () {},
-            icon: const Icon(Icons.share),
-            label: const Text('Compartilhar'),
-            style: ElevatedButton.styleFrom(
-              backgroundColor: Colors.white,
-              foregroundColor: cores[1],
-              padding: const EdgeInsets.symmetric(horizontal: 30, vertical: 15),
-              shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(30)),
-            ),
-          ),
+          const SizedBox(height: 100), // Espaço para o botão de compartilhar
         ],
       ),
     );
   }
 
-  Widget _buildUserScoreCard(String nome, int valor, bool isWinner) {
-    return Container(
-      padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 15),
-      decoration: BoxDecoration(
-        color: isWinner ? Colors.white.withOpacity(0.3) : Colors.white.withOpacity(0.1),
-        borderRadius: BorderRadius.circular(20),
-        border: isWinner ? Border.all(color: Colors.amber, width: 2) : null,
-      ),
-      child: Row(
-        mainAxisAlignment: MainAxisAlignment.spaceBetween,
-        children: [
-          Expanded(
-            child: Text(
-              nome,
-              style: GoogleFonts.poppins(
-                color: Colors.white,
-                fontSize: 18,
-                fontWeight: isWinner ? FontWeight.bold : FontWeight.normal,
-              ),
-              overflow: TextOverflow.ellipsis,
-            ),
+  Widget _buildRankingStory(List<String> keys, Map<String, int> dados) {
+    return Column(
+      children: List.generate(keys.length, (index) {
+        final user = keys[index];
+        final val = dados[user] ?? 0;
+        return Padding(
+          padding: const EdgeInsets.symmetric(vertical: 8),
+          child: Row(
+            mainAxisAlignment: MainAxisAlignment.spaceBetween,
+            children: [
+              Text(user, style: GoogleFonts.poppins(color: Colors.white, fontSize: 16, fontWeight: index == 0 ? FontWeight.bold : FontWeight.normal)),
+              Text('$val', style: GoogleFonts.poppins(color: Colors.white, fontSize: 20, fontWeight: FontWeight.w900)),
+            ],
           ),
-          const SizedBox(width: 10),
-          Text(
-            '$valor',
-            style: GoogleFonts.poppins(
-              color: Colors.white,
-              fontSize: 22,
-              fontWeight: FontWeight.w900,
-            ),
-          ),
-          if (isWinner) ...[
-            const SizedBox(width: 10),
-            const Icon(Icons.stars, color: Colors.amber),
-          ]
-        ],
-      ),
+        );
+      }),
     );
   }
 
@@ -258,8 +273,9 @@ class _TelaStoriesState extends State<TelaStories> {
         child: Column(
           mainAxisAlignment: MainAxisAlignment.center,
           children: [
+            const SizedBox(height: 80),
             Text(
-              'Obrigado por amarem!',
+              'O amor nos dados!',
               textAlign: TextAlign.center,
               style: GoogleFonts.poppins(color: Colors.white, fontSize: 24, fontWeight: FontWeight.bold),
             ),

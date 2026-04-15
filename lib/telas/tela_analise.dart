@@ -48,7 +48,7 @@ class TelaAnalise extends StatelessWidget {
             const SizedBox(height: 32),
             
             // 2. Eu te amo (Horizontal Bar Chart)
-            _buildSectionTitle('Quem ama mais? ❤️'),
+            _buildSectionTitle('Quem falou mais eu te amo? ❤️'),
             _buildBarChartHorizontal(euTeAmoPorUser),
             
             const SizedBox(height: 32),
